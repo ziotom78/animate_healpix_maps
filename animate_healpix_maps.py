@@ -6,7 +6,7 @@ map. Use --column to specify which column of the FITS files to read (default is
 0, which usually is the I Stokes parameter).'''
 
 import matplotlib
-matplotlib.use('Agg') # Non-GUI backend
+matplotlib.use('Agg')  # Non-GUI backend
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -23,11 +23,12 @@ from collections import namedtuple
 
 def parse_command_line():
     "Interpret the command line parameters using an OptionParser object"
-    parser = OptionParser(usage="%prog OUTPUT_FILE_NAME MAP1 COEFF1 [MAP2 COEFF2] ...")
+    parser = OptionParser(usage="%prog [options] TITLE1 MAP1 [TITLE2 MAP2...]")
 
     parser.add_option('--mask', '-m', metavar='FILE',
                       default=None, dest='mask',
-                      help='Path to the FITS file containing the mask to be applied')
+                      help='Path to the FITS file containing the mask to '
+                      'be applied')
     parser.add_option('--no-common-scale', action='store_true',
                       dest='no_common_scale', default=False,
                       help='Do not use a common scale for the colorbar')
@@ -40,11 +41,12 @@ def parse_command_line():
                       ' (default: "%default")')
     parser.add_option('--delay', '-d', metavar='TIME',
                       dest='frame_delay', type='int', default=75,
-                      help='Time to wait between frames, in hundreds of second '
-                      '(default: %default)')
+                      help='Time to wait between frames, in hundreds of '
+                      'second (default: %default)')
     parser.add_option('--power-spectra', action='store_true',
                       dest='plot_spectra', default=False,
-                      help='Include a plot of the power spectra in the animation')
+                      help='Include a plot of the power spectra in the '
+                      'animation')
     parser.add_option('--pixel-distributions', action='store_true',
                       dest='plot_distributions', default=False,
                       help='Include a histogram of the pixels'' values')
@@ -59,7 +61,7 @@ def validate_args(options, args):
     # into something recognized by healpy.read_map, i.e. (0, 1).
     # The use of "frozenset" removes duplicates.
     component_map = {'I': 0, 'Q': 1, 'U': 2}
-    try:                                                                                                                                                                                                     
+    try:
         stokes_component = component_map[options.stokes_component.upper()]
     except KeyError:
         log.fatal('Unknown Stokes component %s in string "%s" '
@@ -72,17 +74,17 @@ def validate_args(options, args):
     # Now overwrite options.stokes_components: we do not need the
     # user-provided string any longer
     options.stokes_component = stokes_component
-    
+
 #####################################################################
 
 
-def create_namedtuple_for_map(options):    
+def create_namedtuple_for_map(options):
     tuple_fields = ['title', 'pixels']
     if options.plot_distributions:
         tuple_fields.append('histogram')
-    
+
     return namedtuple('Map', tuple_fields)
-    
+
 #####################################################################
 
 
@@ -91,12 +93,12 @@ def hist_x_axis_points(bins):
     of a histogram computed with hp.histogram, return a N-element
     list with the bin mid-points.'''
     return (bins[:-1] + bins[1:]) * 0.5
-    
-    
+
+
 #####################################################################
 
-log.basicConfig(level = log.DEBUG,
-                format = '[%(asctime)s %(levelname)s] %(message)s')
+log.basicConfig(level=log.DEBUG,
+                format='[%(asctime)s %(levelname)s] %(message)s')
 
 OPTIONS, ARGS = parse_command_line()
 if len(ARGS) < 2:
@@ -106,7 +108,7 @@ if len(ARGS) < 2:
 
 validate_args(OPTIONS, ARGS)
 
-map_title_name_pairs = zip(*[iter(ARGS)]*2)
+map_title_name_pairs = zip(*[iter(ARGS)] * 2)
 Map = create_namedtuple_for_map(OPTIONS)
 
 maps_read = []
@@ -157,7 +159,7 @@ for cur_entry in maps_read:
                         sub=(num_of_plots * 100 + 10 + 1),
                         min=min_temperature,
                         max=max_temperature)
-        
+
         next_plot = 2
         if OPTIONS.plot_distributions:
             plt.subplot(num_of_plots, 1, next_plot)
