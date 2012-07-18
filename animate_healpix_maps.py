@@ -57,6 +57,8 @@ def parse_command_line():
 
 
 def validate_args(options, args):
+    'Check and fix some of the parameters specified on the command line'
+    
     # We want to convert a string of Stokes components like "I,q"
     # into something recognized by healpy.read_map, i.e. (0, 1).
     # The use of "frozenset" removes duplicates.
@@ -68,18 +70,24 @@ def validate_args(options, args):
                   '(available choices are %s)',
                   sys.exc_value,
                   options.stokes_components,
-                  ', '.join(['"%s"' % x for x in component_map.keys()]))
+                  ', '.join(['"%s"' % k for k in component_map.keys()]))
         sys.exit(1)
 
     # Now overwrite options.stokes_components: we do not need the
     # user-provided string any longer
     options.stokes_component = stokes_component
 
+    if len(args) < 2:
+        sys.stderr.write('Error: at least one map (and its title) are '
+                         'expected on the command line\n')
+        sys.exit(1)
+
 #####################################################################
 
 
 def create_namedtuple_for_map(options):
-    tuple_fields = ['title', 'pixels']
+    'Return the definition of a named tuple to be used for the input maps'
+    tuple_fields = ['title', 'pixels', 'input_file']
     if options.plot_distributions:
         tuple_fields.append('histogram')
 
@@ -88,11 +96,11 @@ def create_namedtuple_for_map(options):
 #####################################################################
 
 
-def hist_x_axis_points(bins):
+def hist_x_axis_points(bin_edges):
     '''If BINS is a list with N+1 elements containing the bin edges
     of a histogram computed with hp.histogram, return a N-element
     list with the bin mid-points.'''
-    return (bins[:-1] + bins[1:]) * 0.5
+    return (bin_edges[:-1] + bin_edges[1:]) * 0.5
 
 
 #####################################################################
@@ -101,20 +109,17 @@ log.basicConfig(level=log.DEBUG,
                 format='[%(asctime)s %(levelname)s] %(message)s')
 
 OPTIONS, ARGS = parse_command_line()
-if len(ARGS) < 2:
-    sys.stderr.write('Error: at least a map and a title are expected '
-                     'on the command line\n')
-    sys.exit(1)
-
 validate_args(OPTIONS, ARGS)
 
-map_title_name_pairs = zip(*[iter(ARGS)] * 2)
 Map = create_namedtuple_for_map(OPTIONS)
 
-maps_read = []
-for cur_title, cur_map_file in map_title_name_pairs:
+########################################
+# Read the input maps in memory
+
+INPUT_MAPS = []
+for cur_title, cur_map_file in zip(*[iter(ARGS)] * 2):
     try:
-        log.info('reading map `%s\'...' % cur_map_file)
+        log.info('reading map `%s\'...', cur_map_file)
         cur_map = healpy.read_map(cur_map_file, field=OPTIONS.stokes_component)
         cur_map[cur_map < -1.6e+30] = np.NaN
 
@@ -122,49 +127,53 @@ for cur_title, cur_map_file in map_title_name_pairs:
             cur_map[OPTIONS.mask == 0] = np.NaN
 
         cur_entry = dict(title=cur_title,
-                         pixels=cur_map)
+                         pixels=cur_map,
+                         input_file=cur_map_file)
         if OPTIONS.plot_distributions:
             cur_entry['histogram'] = np.histogram(cur_map[~np.isnan(cur_map)],
                                                   bins=50)
-        maps_read.append(Map(**cur_entry))
+        INPUT_MAPS.append(Map(**cur_entry))
         log.info('...ok')
     except:
         log.info('...error, skipping this map')
         raise
 
-min_temperature = None
-max_temperature = None
+MIN_TEMPERATURE = None
+MAX_TEMPERATURE = None
 if not OPTIONS.no_common_scale:
-    min_temperature = np.nanmin([np.nanmin(x.pixels) for x in maps_read])
-    max_temperature = np.nanmax([np.nanmax(x.pixels) for x in maps_read])
+    MIN_TEMPERATURE = np.nanmin([np.nanmin(x.pixels) for x in INPUT_MAPS])
+    MAX_TEMPERATURE = np.nanmax([np.nanmax(x.pixels) for x in INPUT_MAPS])
 
 IMAGE_SCALE = 2.5
-png_file_names = []
 
-num_of_plots = 1
+NUM_OF_PLOTS = 1
 if OPTIONS.plot_spectra:
-    num_of_plots += 1
+    NUM_OF_PLOTS += 1
 if OPTIONS.plot_distributions:
-    num_of_plots += 1
+    NUM_OF_PLOTS += 1
 
-for cur_entry in maps_read:
+########################################
+# Create the frames for the animation
+
+PNG_FILE_NAMES = []
+for cur_entry in INPUT_MAPS:
     try:
         log.info('plotting the map using "%s" as title',
                  cur_entry.title)
         fig = plt.figure(1, (3 * IMAGE_SCALE,
-                             2 * IMAGE_SCALE * num_of_plots))
+                             2 * IMAGE_SCALE * NUM_OF_PLOTS))
         healpy.mollview(cur_entry.pixels,
                         title=cur_entry.title,
                         fig=1,
-                        sub=(num_of_plots * 100 + 10 + 1),
-                        min=min_temperature,
-                        max=max_temperature)
+                        sub=(NUM_OF_PLOTS * 100 + 10 + 1),
+                        min=MIN_TEMPERATURE,
+                        max=MAX_TEMPERATURE)
 
         next_plot = 2
         if OPTIONS.plot_distributions:
-            plt.subplot(num_of_plots, 1, next_plot)
+            plt.subplot(NUM_OF_PLOTS, 1, next_plot)
             num_of_bins = 50
-            for i in maps_read:
+            for i in INPUT_MAPS:
                 n, bins = i.histogram
                 log.debug("#bins = %d, #x = %d, #y = %d",
                           len(bins),
@@ -184,26 +193,29 @@ for cur_entry in maps_read:
             plt.grid()
 
         file_name = tempfile.mktemp() + '.png'
-        log.info('saving the map in temporary file `%s\'' % file_name)
+        log.info('saving the map in temporary file `%s\'', file_name)
         fig.savefig(file_name)
         plt.clf()
-        png_file_names.append(file_name)
+        PNG_FILE_NAMES.append(file_name)
     except:
-        sys.stderr.write('Unable to produce a map for `%s'', skipping\n'
-                         % cur_map_file)
+        sys.stderr.write('Unable to produce a map for `%s'', skipping\n',
+                         cur_entry.input_file)
         raise
 
-convert_cmd_line = ' '.join(['convert',
+########################################
+# Create the .gif file from the frames
+
+CONVERT_CMD_LINE = ' '.join(['convert',
                              '-delay {0}'.format(OPTIONS.frame_delay),
                              '-loop 0',
-                             ' '.join(png_file_names),
+                             ' '.join(PNG_FILE_NAMES),
                              OPTIONS.output_file_name])
-log.info('running command `%s\'' % convert_cmd_line)
-os.system(convert_cmd_line)
+log.info('running command `%s\'', CONVERT_CMD_LINE)
+os.system(CONVERT_CMD_LINE)
 
-for cur_file in png_file_names:
+for cur_file in PNG_FILE_NAMES:
+    log.info('trying to remove file `%s\'...', cur_file)
     try:
-        log.info('trying to remove file `%s\'...' % cur_file)
         os.unlink(cur_file)
         log.info('...done')
     except:
