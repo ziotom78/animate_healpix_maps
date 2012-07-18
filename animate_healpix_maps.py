@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 '''Assemble a number of Healpix FITS maps into a GIF animated file.
-If the `--mask' argument is present, a mask will be applied to every
-map. Use --column to specify which column of the FITS files to read (default is
-0, which usually is the I Stokes parameter).'''
+Run the program with the '--help' switch to see the many options it
+accepts.'''
 
 import matplotlib
 matplotlib.use('Agg')  # Non-GUI backend
@@ -46,7 +45,7 @@ def parse_command_line():
     parser.add_option('--power-spectra', action='store_true',
                       dest='plot_spectra', default=False,
                       help='Include a plot of the power spectra in the '
-                      'animation')
+                      'animation (not yet implemented)')
     parser.add_option('--pixel-distributions', action='store_true',
                       dest='plot_distributions', default=False,
                       help='Include a histogram of the pixels'' values')
