@@ -24,8 +24,9 @@ To see a list of available options, use `--help`.
 ## Example
 
 The following animation has been produced using the maps delivered by
-the COBE/DMR team for the two 31 GHz channels. The command used to
-produce the .gif file was
+the COBE/DMR team for the two 31 GHz channels (download them from
+[here](http://lambda.gsfc.nasa.gov/product/cobe/dmr_4year_skymaps_get.cfm)).
+The command used to produce the .gif file was
 
     $ animate_healpix_maps.py \
 	    -s 0.75 \
