@@ -57,7 +57,7 @@ def parse_command_line():
 
 def validate_args(options, args):
     'Check and fix some of the parameters specified on the command line'
-    
+
     # We want to convert a string of Stokes components like "I,q"
     # into something recognized by healpy.read_map, i.e. (0, 1).
     # The use of "frozenset" removes duplicates.
@@ -67,7 +67,7 @@ def validate_args(options, args):
     except KeyError:
         log.fatal('Unknown Stokes component %s in string "%s" '
                   '(available choices are %s)',
-                  sys.exc_value,
+                  sys.exc_info()[1],
                   options.stokes_components,
                   ', '.join(['"%s"' % k for k in component_map.keys()]))
         sys.exit(1)

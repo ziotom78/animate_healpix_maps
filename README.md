@@ -5,7 +5,7 @@ produces an animated .gif file with Mollweide projections of the maps.
 
 ## Requirements
 
-* Python 2.7 (maybe 2.6 will work too?)
+* Python 3.6 (maybe older versions 3.x will work too?)
 * Matplotlib
 * NumPy
 * [Healpy](https://github.com/healpy/healpy)
