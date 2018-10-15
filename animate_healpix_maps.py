@@ -28,6 +28,12 @@ def parse_command_line():
                       default=None, dest='mask',
                       help='Path to the FITS file containing the mask to '
                       'be applied')
+    parser.add_option('--no-monopole', action='store_true',
+                      dest='no_monopole', default=False,
+                      help='Remove the monopole from all the maps')
+    parser.add_option('--no-dipole', action='store_true',
+                      dest='no_dipole', default=False,
+                      help='Remove the dipole from all the maps')
     parser.add_option('--no-common-scale', action='store_true',
                       dest='no_common_scale', default=False,
                       help='Do not use a common scale for the colorbar')
@@ -120,6 +126,15 @@ for cur_title, cur_map_file in zip(*[iter(ARGS)] * 2):
     try:
         log.info('reading map `%s\'...', cur_map_file)
         cur_map = healpy.read_map(cur_map_file, field=OPTIONS.stokes_component)
+
+        if OPTIONS.no_monopole:
+            result = healpy.remove_monopole(cur_map, fitval=True, copy=False)
+            log.info('monopole has been removed (%s)', str(result))
+        if OPTIONS.no_dipole:
+            result = healpy.remove_dipole(cur_map, fitval=True, copy=False)
+            log.info('dipole has been removed (amplitude: %s)',
+                     str(result))
+            
         cur_map[cur_map < -1.6e+30] = np.NaN
 
         if type(OPTIONS.mask) is not None:
